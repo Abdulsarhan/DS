@@ -1,7 +1,7 @@
 #include "ds.h"
 
 int main() {
-	string s = s_str("hello world!\n");
-	s_print_string(s);
+	string s = s_make("hello world!\n");
+	s_print(s);
 	return 0;
 }
