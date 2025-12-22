@@ -24,12 +24,12 @@ DSAPI string str_make(const char* str);
 /* this function slices from left if a positive from is provided, and from the right if a negative from is provided */
 DSAPI string str_from(string str, size_t from);
 DSAPI string str_from_to(string str, size_t from, size_t to);
-DSAPI string str_copy(char *dst, const char *str);
-DSAPI string str_format(char *dst, const char *format, ...);
+DSAPI string str_copy(char *dst, char *str);
+DSAPI string str_format(char *buffer, const char *format, ...);
 DSAPI int str_print(string str);
 
 DSAPI string_builder sb_make(const char* str, size_t initial_capacity);
-DSAPI void sb_append(string_builder *builder, const char *str);
+DSAPI string sb_append(string_builder *builder, const char *str);
 DSAPI int sb_print(string_builder *builder);
 DSAPI void sb_free(string_builder *builder);
 
@@ -89,7 +89,7 @@ DSAPI string str_make(const char* str) {
     return s;
 }
 
-DSAPI string str_from(string str, int from) {
+DSAPI string str_from(string str, size_t from) {
     if (from == 0) return str;
 
     if (from < 0) from += (int)str.len;
@@ -103,7 +103,7 @@ DSAPI string str_from(string str, int from) {
     return str;
 }
 
-DSAPI string str_from_to(string str, int from, int to) {
+DSAPI string str_from_to(string str, size_t from, size_t to) {
     if (from < 0) from += (int)str.len;
     if (to   < 0) to   += (int)str.len;
 
@@ -125,7 +125,7 @@ DSAPI string str_from_to(string str, int from, int to) {
     return result;
 }
 
-DSAPI string str_copy(char *dst, const char *str) {
+DSAPI string str_copy(char *dst, char *str) {
     strcpy(dst, str);
     string string;
     string.value = str;
@@ -134,19 +134,19 @@ DSAPI string str_copy(char *dst, const char *str) {
 
 char eat_char(char **at) {
     if (**at != '\0') {
-        char c = **at;   // read char
-        (*at)++;         // advance caller's pointer
+        char c = **at;
+        (*at)++;
         return c;
     }
     return '\0';
 }
 
-DSAPI string str_format(char *dst, char *format, ...) {
+DSAPI string str_format(char *buffer, const char *format, ...) {
     va_list ap;
-    char *at = format;
+    char *at = (char*)format;
     char c;
 
-    char *out = dst;   // keep pointer to start
+    char *out = buffer;   // keep pointer to start
 
     va_start(ap, format);
 
@@ -157,45 +157,45 @@ DSAPI string str_format(char *dst, char *format, ...) {
 
             case 's': {
                 char *s = va_arg(ap, char *);
-                strcpy(dst, s);
-                dst += strlen(s);
+                strcpy(buffer, s);
+                buffer += strlen(s);
             } break;
 
             case 'd': {
                 int d = va_arg(ap, int);
-                int written = sprintf(dst, "%d", d);
-                dst += written;
+                int written = sprintf(buffer, "%d", d);
+                buffer += written;
             } break;
 
             case 'z': {
                 char next = eat_char(&at);  // expect 'u'
                 if (next == 'u') {
                     size_t zu = va_arg(ap, size_t);
-                    int written = sprintf(dst, "%zu", zu);
-                    dst += written;
+                    int written = sprintf(buffer, "%zu", zu);
+                    buffer += written;
                 }
             } break;
 
             default:
-                *dst++ = spec;
+                *buffer++ = spec;
                 break;
             }
         } else {
-            *dst++ = c;
+            *buffer++ = c;
         }
     }
 
-    *dst = '\0';
+    *buffer = '\0';
     va_end(ap);
 
     string result;
     result.value = out;
-    result.len = dst - out;
+    result.len = buffer - out;
     return result;
 }
 
 DSAPI int str_print(string str) {
-    return printf("%s", str.value);
+    return printf("%.*s", (int)str.len, str.value);
 }
 
 /* string builder */
@@ -203,14 +203,18 @@ DSAPI string_builder sb_make(const char* str, size_t initial_capacity) {
 	string_builder str_builder = { 0 };
 	string string = {0};
 	string.len = strlen(str);
-	string.value = (string.len > initial_capacity) ? (char*)malloc(string.len + 1) : (char*)malloc(initial_capacity);
+    if(string.len > initial_capacity) {
+        string.value = (char*)malloc(string.len + 1);
+    } else {
+        string.value = (char*)malloc(initial_capacity);
+    }
 	strcpy(string.value, str);
 	str_builder.string = string;
 	str_builder.capacity = initial_capacity;
 	return str_builder;
 }
 
-DSAPI void sb_append(string_builder *builder, const char *str) {
+DSAPI string sb_append(string_builder *builder, const char *str) {
 	size_t str_len = strlen(str);
 	size_t required = builder->string.len + str_len + 1; // +1 for '\0'
 
@@ -219,7 +223,7 @@ DSAPI void sb_append(string_builder *builder, const char *str) {
 		char *tmp = (char*)realloc(builder->string.value, new_capacity);
 		if (!tmp) {
 			printf("sb_append(): Failed to acquire memory. Did not append string.");
-			return;
+			return builder->string;
 		}
 		builder->string.value = tmp;
 		builder->capacity = new_capacity;
@@ -228,6 +232,7 @@ DSAPI void sb_append(string_builder *builder, const char *str) {
 	/* Append string */
 	memcpy(builder->string.value + builder->string.len, str, str_len + 1);
 	builder->string.len += str_len;
+    return builder->string;
 }
 
 DSAPI int sb_print(string_builder *builder) {
