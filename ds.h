@@ -130,6 +130,7 @@ DSAPI string str_copy(char *dst, char *str) {
     string string;
     string.value = str;
     string.len = strlen(str);
+    return string;
 }
 
 char eat_char(char **at) {
