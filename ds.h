@@ -5,9 +5,6 @@
 
 #define DSAPI extern
 
-#ifdef __cplusplus
-extern "C" {
-#endif // extern "C" {
 
 typedef struct {
 	char* value;
@@ -18,6 +15,10 @@ typedef struct {
 	string string;
 	size_t capacity;
 }string_builder;
+
+#ifdef __cplusplus
+extern "C" {
+#endif // extern "C" {
 
 DSAPI string str_make(const char* str);
 
@@ -30,12 +31,13 @@ DSAPI int str_print(string str);
 
 DSAPI string_builder sb_make(const char* str, size_t initial_capacity);
 DSAPI string sb_append(string_builder *builder, const char *str);
+DSAPI void sb_reset(string_builder *builder);
 DSAPI int sb_print(string_builder *builder);
 DSAPI void sb_free(string_builder *builder);
 
 #ifdef __cplusplus
 }
-#endif // }
+#endif
 
 typedef struct arr_header {
   size_t length;
@@ -234,6 +236,11 @@ DSAPI string sb_append(string_builder *builder, const char *str) {
 	memcpy(builder->string.value + builder->string.len, str, str_len + 1);
 	builder->string.len += str_len;
     return builder->string;
+}
+
+DSAPI void sb_reset(string_builder *builder) {
+    builder->string.value = '\0';
+    builder->string.len = 0;
 }
 
 DSAPI int sb_print(string_builder *builder) {
