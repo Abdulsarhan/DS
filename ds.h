@@ -27,6 +27,8 @@
 #define UNREACHABLE() printf("Error: Reached unreachable code on line: %d in file: %s", __LINE__, __FILE__);
 #endif /* UNREACHABLE */
 
+#define defer(start, end) for (int _i = (start, 1); _i; _i = 0, end)
+
 #ifndef TODO
 #define TODO(...) \
     do { \
@@ -67,6 +69,15 @@
         ((cond) ? (void)0 : (fprintf(stderr, "Assertion failed: %s\nFile: %s, Line: %d\n", \
                                       #cond, __FILE__, __LINE__), DEBUG_BREAK()))
 #endif /* NDEBUG */
+
+#define KiB(n) ((size_t)(n) << 10)
+#define MiB(n) ((size_t)(n) << 20)
+#define GiB(n) ((size_t)(n) << 30)
+
+#define ARENA_PUSH_STRUCT(arena, T) (T*)arena_push(arena, sizeof(T), 0)
+#define ARENA_PUSH_ARRAY(arena, T, n) (T*)arena_push(arena, sizeof(T) * n, 0)
+#define ARENA_PUSH_STRUCT_ZERO(arena, T) (T*)arena_push(arena, sizeof(T), 1)
+#define ARENA_PUSH_ARRAY_ZERO(arena, T, n) (T*)arena_push(arena, sizeof(T) * n, 1)
 
 typedef struct {
     size_t pos;
@@ -109,11 +120,6 @@ DSAPI void arena_clear(mem_arena *arena);
 DSAPI void arena_destroy(mem_arena *arena);
 DSAPI int arena_reset_region(const mem_arena *arena, void *region_start, size_t region_size);
 
-#define ARENA_PUSH_STRUCT(arena, T) (T*)arena_push(arena, sizeof(T), 0)
-#define ARENA_PUSH_ARRAY(arena, T, n) (T*)arena_push(arena, sizeof(T) * n, 0)
-#define ARENA_PUSH_STRUCT_ZERO(arena, T) (T*)arena_push(arena, sizeof(T), 1)
-#define ARENA_PUSH_ARRAY_ZERO(arena, T, n) (T*)arena_push(arena, sizeof(T) * n, 1)
-
 DSAPI string str_make(const char* str);
 
 /* this function slices from left if a positive from is provided, and from the right if a negative from is provided */
@@ -122,7 +128,7 @@ DSAPI string str_from_to(string str, size_t from, size_t to);
 DSAPI string str_copy(char *dst, char *str);
 DSAPI string str_format(char *buffer, const char *format, ...);
 DSAPI int str_print(string str);
-/* to_str stuff */
+
 DSAPI string ds_to_stri(mem_arena *arena, int value);
 DSAPI char *ds_to_cstri(mem_arena *arena, int value);
 DSAPI int ds_itoa(int value, char *string);
@@ -133,7 +139,6 @@ DSAPI void sb_reset(string_builder *builder);
 DSAPI int sb_print(string_builder *builder);
 DSAPI void sb_free(string_builder *builder);
 
-
 #define header(t)  ((da_header *) (t) - 1)
 
 #define da_reserve(a,n)          (da_grow(a,0,n)) /* reserve n bytes for the entire array. You can do this to avoid calling realloc() multiple times */
@@ -142,12 +147,13 @@ DSAPI void sb_free(string_builder *builder);
 #define da_len(a)                ((a) ? (ptrdiff_t) header(a)->length : 0)
 #define da_lenu(a)               ((a) ?             header(a)->length : 0)
 #define da_push(a,v)             (da_maybe_grow(a,1), (a)[header(a)->length++] = (v))
-#define da_push_many(a,v,n) do { \
-    da_maybe_grow(a,n); \
-    for(int i = 0; i < (n); i++) { \
-        (a)[header(a)->length++] = (v)[i]; \
-    } \
-} while(0)
+#define da_push_many(a,v,n) \
+    do { \
+        da_maybe_grow(a,n); \
+        for(int i = 0; i < (n); i++) { \
+            (a)[header(a)->length++] = (v)[i]; \
+        } \
+    } while(0)
 #define da_pop(a)                (header(a)->length--, (a)[header(a)->length])
 #define da_expand_ptr(a,n)       (da_maybe_grow(a,n), (n) ? (header(a)->length += (n), &(a)[header(a)->length-(n)]) : (a))
 #define da_expand_index(a,n)     (da_maybe_grow(a,n), (n) ? (header(a)->length += (n), header(a)->length-(n)) : da_len(a))
