@@ -17,7 +17,7 @@
     #define DSAPI extern
 #endif // DSAPI
 
-#ifndef NDEBUG /* NDEBUG means "not debug", so by doing ifndef, we want these things to be defined only in debug mode */
+#ifdef DEBUG /* NDEBUG means "not debug", so by doing ifndef, we want these things to be defined only in debug mode */
 
 #ifndef UNIMPLEMENTED
 #define UNIMPLEMENTED printf("Unimplemented function on line: %d in file: %s" __LINE__, __FILE__);
@@ -26,8 +26,6 @@
 #ifndef UNREACHABLE
 #define UNREACHABLE() printf("Error: Reached unreachable code on line: %d in file: %s", __LINE__, __FILE__);
 #endif /* UNREACHABLE */
-
-#define defer(start, end) for (int _i = (start, 1); _i; _i = 0, end)
 
 #ifndef TODO
 #define TODO(...) \
@@ -69,6 +67,8 @@
         ((cond) ? (void)0 : (fprintf(stderr, "Assertion failed: %s\nFile: %s, Line: %d\n", \
                                       #cond, __FILE__, __LINE__), DEBUG_BREAK()))
 #endif /* NDEBUG */
+
+#define defer(start, end) for (int _i = (start, 1); _i; _i = 0, end)
 
 #define KiB(n) ((size_t)(n) << 10)
 #define MiB(n) ((size_t)(n) << 20)
